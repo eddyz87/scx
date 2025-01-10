@@ -736,12 +736,19 @@ s32 pick_idle_cpu(struct task_struct *p, s32 prev_cpu,
 	if (has_little_cores && big_cpumask &&
 	    layer->growth_algo == GROWTH_ALGO_BIG_LITTLE) {
 		struct bpf_cpumask *tmp_cpumask;
+		struct bpf_cpumask *tmp_cpumask1;
 
 		if (!(tmp_cpumask = bpf_cpumask_create())) {
 			cpu = -1;
 			goto out_put;
 		}
-		bpf_cpumask_and(tmp_cpumask, cast_mask(tctx->layered_mask),
+                tmp_cpumask1 = tctx->layered_mask;
+                if (!tmp_cpumask1 || !big_cpumask) {
+		        bpf_cpumask_release(tmp_cpumask);
+			cpu = -1;
+			goto out_put;
+                }
+		bpf_cpumask_and(tmp_cpumask, cast_mask(tmp_cpumask1),
 				cast_mask(big_cpumask));
 		cpu = pick_idle_cpu_from(cast_mask(tmp_cpumask),
 					 prev_cpu, idle_smtmask,
