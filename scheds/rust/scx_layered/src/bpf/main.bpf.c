@@ -2369,125 +2369,29 @@ static void dump_layer_cpumask(int idx)
 	if (!(layer_cpumask = lookup_layer_cpumask(idx)))
 		return;
 
-	bpf_for(cpu, 0, scx_bpf_nr_cpu_ids()) {
+	bpf_for(cpu, 0, 10) {
+		// uncomment to make the issue go away:
+		// asm ("%0 /= 1;" : "+r"(idx));
 		if (!(p = MEMBER_VPTR(buf, [idx++])))
 			break;
 		if (bpf_cpumask_test_cpu(cpu, layer_cpumask))
-			*p++ = '0' + cpu % 10;
+			*p++ = '0';
 		else
 			*p++ = '.';
-
-		if ((cpu & 7) == 7) {
-			if (!(p = MEMBER_VPTR(buf, [idx++])))
-				break;
-			*p++ = '|';
-		}
-	}
+ 	}
 	buf[sizeof(buf) - 1] = '\0';
 
 	scx_bpf_dump("%s", buf);
 }
 
-int dump_cost(void)
-{
-	int i, j;
-	struct cost *costc;
-	struct layer *layer;
-
-	// Lookup global cost
-	if (!(costc = lookup_cost(0))) {
-		scx_bpf_error("unabled to lookup cost ");
-		return -EINVAL;
-	}
-	bpf_for(j, 0, nr_layers) {
-		layer = lookup_layer(j);
-		if (!layer) {
-			scx_bpf_error("unabled to lookup layer %d", j);
-			continue;
-		}
-		scx_bpf_dump("COST GLOBAL[%d][%s] budget=%lld capacity=%lld\n",
-			     j, layer->name,
-			     costc->budget[j], costc->capacity[j]);
-	}
-	// fallback DSQs
-	bpf_for(i, 0, nr_llcs) {
-		u64 dsq_id = llc_hi_fallback_dsq_id(i);
-		u32 budget_id = fallback_dsq_cost_id(dsq_id);
-		scx_bpf_dump("COST FALLBACK[%llu][%d] budget=%lld capacity=%lld\n",
-			     dsq_id, budget_id,
-			     costc->budget[budget_id], costc->capacity[budget_id]);
-	}
-
-	// Per CPU costs
-	bpf_for(i, 0, nr_possible_cpus) {
-		if (!(costc = lookup_cpu_cost(i))) {
-			scx_bpf_error("unabled to lookup layer %d", i);
-			continue;
-		}
-		bpf_for(j, 0, nr_layers) {
-			layer = lookup_layer(j);
-			if (!layer) {
-				scx_bpf_error("unabled to lookup layer %d", i);
-				continue;
-			}
-			scx_bpf_dump("COST CPU[%d][%d][%s] budget=%lld capacity=%lld\n",
-				     i, j, layer->name,
-				     costc->budget[j], costc->capacity[j]);
-		}
-		bpf_for(j, 0, nr_llcs) {
-			u64 dsq_id = llc_hi_fallback_dsq_id(j);
-			u32 budget_id = fallback_dsq_cost_id(dsq_id);
-			if (budget_id >= MAX_GLOBAL_BUDGETS)
-				continue;
-			scx_bpf_dump("COST CPU[%d]FALLBACK[%llu][%d] budget=%lld capacity=%lld\n",
-				     i, dsq_id, budget_id,
-				     costc->budget[budget_id], costc->capacity[budget_id]);
-		}
-	}
-
-	return 0;
-}
-
 #if 1
 void BPF_STRUCT_OPS(layered_dump, struct scx_dump_ctx *dctx)
 {
-	u64 now = bpf_ktime_get_ns();
-	u64 dsq_id;
-	int i, j, idx;
-	struct layer *layer;
+	int i;
 
 	bpf_for(i, 0, nr_layers) {
-		layer = lookup_layer(i);
-		if (!layer) {
-			scx_bpf_error("unabled to lookup layer %d", i);
-			continue;
-		}
-
-		bpf_for(j, 0, nr_llcs) {
-			if (!(layer->cache_mask & (1 << j)))
-				continue;
-
-			idx = layer_dsq_id(layer->idx, j);
-			scx_bpf_dump("LAYER[%d][%s]DSQ[%d] nr_cpus=%u nr_queued=%d -%llums cpus=",
-				     i, layer->name, idx, layer->nr_cpus,
-				     scx_bpf_dsq_nr_queued(idx),
-				     dsq_first_runnable_for_ms(idx, now));
-			scx_bpf_dump("\n");
-		}
 		dump_layer_cpumask(i);
-		scx_bpf_dump("\n");
 	}
-	bpf_for(i, 0, nr_llcs) {
-		dsq_id = llc_hi_fallback_dsq_id(i);
-		scx_bpf_dump("HI_FALLBACK[%llu] nr_queued=%d -%llums\n",
-			     dsq_id, scx_bpf_dsq_nr_queued(dsq_id),
-			     dsq_first_runnable_for_ms(dsq_id, now));
-	}
-	scx_bpf_dump("LO_FALLBACK nr_queued=%d -%llums\n",
-		     scx_bpf_dsq_nr_queued(LO_FALLBACK_DSQ),
-		     dsq_first_runnable_for_ms(LO_FALLBACK_DSQ, now));
-
-	dump_cost();
 }
 #endif
 
