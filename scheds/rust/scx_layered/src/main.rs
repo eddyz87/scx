@@ -1708,8 +1708,8 @@ impl<'a> Scheduler<'a> {
             let input = ProgramInput {
                 ..Default::default()
             };
-            let prog = &mut self.skel.progs.refresh_layer_cpumasks;
-            let _ = prog.test_run(input);
+            //let prog = &mut self.skel.progs.refresh_layer_cpumasks;
+            //let _ = prog.test_run(input);
         }
 
         let _ = self.update_netdev_cpumasks();

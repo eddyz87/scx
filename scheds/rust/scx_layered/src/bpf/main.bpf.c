@@ -363,6 +363,7 @@ static bool refresh_cpumasks(int idx)
 // defined after some helpers, but before it's helpers are used.
 #include "cost.bpf.c"
 
+#if 0
 /*
  * Refreshes all layer cpumasks, this is called via BPF_PROG_RUN from userspace.
  */
@@ -376,6 +377,7 @@ int BPF_PROG(refresh_layer_cpumasks)
 
 	return 0;
 }
+#endif
 
 struct cached_cpus {
 	s64			id;
@@ -425,6 +427,7 @@ static struct task_ctx *lookup_task_ctx(struct task_struct *p)
 	return tctx;
 }
 
+#if 0
 /*
  * Because the layer membership is by the default hierarchy cgroups rather than
  * the CPU controller membership, we can't use ops.cgroup_move(). Let's iterate
@@ -483,7 +486,9 @@ int BPF_PROG(tp_cgroup_attach_task, struct cgroup *cgrp, const char *cgrp_path,
 		bpf_task_release(next);
 	return 0;
 }
+#endif
 
+#if 0
 SEC("tp_btf/task_rename")
 int BPF_PROG(tp_task_rename, struct task_struct *p, const char *buf)
 {
@@ -493,6 +498,7 @@ int BPF_PROG(tp_task_rename, struct task_struct *p, const char *buf)
 		tctx->refresh_layer = true;
 	return 0;
 }
+#endif
 
 static bool should_refresh_cached_cpus(struct cached_cpus *ccpus, s64 id, u64 cpus_seq)
 {
@@ -790,6 +796,7 @@ out_put:
 	return cpu;
 }
 
+#if 0
 s32 BPF_STRUCT_OPS(layered_select_cpu, struct task_struct *p, s32 prev_cpu, u64 wake_flags)
 {
 	struct cpu_ctx *cctx;
@@ -819,6 +826,7 @@ s32 BPF_STRUCT_OPS(layered_select_cpu, struct task_struct *p, s32 prev_cpu, u64 
 		return prev_cpu;
 	}
 }
+#endif
 
 static __always_inline
 bool pick_idle_cpu_and_kick(struct task_struct *p, s32 task_cpu,
@@ -1088,6 +1096,7 @@ preempt_fail:
 	lstat_inc(LSTAT_PREEMPT_FAIL, layer, cctx);
 }
 
+#if 0
 void BPF_STRUCT_OPS(layered_enqueue, struct task_struct *p, u64 enq_flags)
 {
 	struct cpu_ctx *cctx, *task_cctx;
@@ -1177,6 +1186,7 @@ void BPF_STRUCT_OPS(layered_enqueue, struct task_struct *p, u64 enq_flags)
 preempt:
 	try_preempt(task_cpu, p, tctx, try_preempt_first, enq_flags);
 }
+#endif
 
 static bool keep_running(struct cpu_ctx *cctx, struct task_struct *p)
 {
@@ -1632,6 +1642,7 @@ __weak int consume_open_no_preempt(struct cost *costc, u32 my_llc_id)
 	return -ENOENT;
 }
 
+#if 0
 void BPF_STRUCT_OPS(layered_dispatch, s32 cpu, struct task_struct *prev)
 {
 	if (disable_topology)
@@ -1692,6 +1703,7 @@ void BPF_STRUCT_OPS(layered_dispatch, s32 cpu, struct task_struct *prev)
 
 	scx_bpf_consume(LO_FALLBACK_DSQ);
 }
+#endif
 
 static __noinline bool match_one(struct layer_match *match,
 				 struct task_struct *p, const char *cgrp_path)
@@ -2012,7 +2024,7 @@ void on_wakeup(struct task_struct *p, struct task_ctx *tctx)
 	lstat_inc(LSTAT_XLAYER_WAKE, layer, cctx);
 }
 
-
+#if 0
 void BPF_STRUCT_OPS(layered_runnable, struct task_struct *p, u64 enq_flags)
 {
 	struct task_ctx *tctx;
@@ -2028,7 +2040,9 @@ void BPF_STRUCT_OPS(layered_runnable, struct task_struct *p, u64 enq_flags)
 	if (enq_flags & SCX_ENQ_WAKEUP)
 		on_wakeup(p, tctx);
 }
+#endif
 
+#if 0
 void BPF_STRUCT_OPS(layered_running, struct task_struct *p)
 {
 	struct cpu_ctx *cctx;
@@ -2092,7 +2106,9 @@ void BPF_STRUCT_OPS(layered_running, struct task_struct *p)
 
 	cctx->maybe_idle = false;
 }
+#endif
 
+#if 0
 void BPF_STRUCT_OPS(layered_stopping, struct task_struct *p, bool runnable)
 {
 	struct cpu_ctx *cctx;
@@ -2139,7 +2155,9 @@ void BPF_STRUCT_OPS(layered_stopping, struct task_struct *p, bool runnable)
 	p->scx.dsq_vtime += used * 100 / p->scx.weight;
 	cctx->maybe_idle = true;
 }
+#endif
 
+#if 0
 void BPF_STRUCT_OPS(layered_quiescent, struct task_struct *p, u64 deq_flags)
 {
 	struct task_ctx *tctx;
@@ -2147,7 +2165,9 @@ void BPF_STRUCT_OPS(layered_quiescent, struct task_struct *p, u64 deq_flags)
 	if ((tctx = lookup_task_ctx(p)))
 		adj_load(tctx->layer, -(s64)p->scx.weight, bpf_ktime_get_ns());
 }
+#endif
 
+#if 0
 bool BPF_STRUCT_OPS(layered_yield, struct task_struct *from, struct task_struct *to)
 {
 	struct cpu_ctx *cctx;
@@ -2177,7 +2197,9 @@ bool BPF_STRUCT_OPS(layered_yield, struct task_struct *from, struct task_struct 
 
 	return false;
 }
+#endif
 
+#if 0
 void BPF_STRUCT_OPS(layered_set_weight, struct task_struct *p, u32 weight)
 {
 	struct task_ctx *tctx;
@@ -2185,7 +2207,9 @@ void BPF_STRUCT_OPS(layered_set_weight, struct task_struct *p, u32 weight)
 	if ((tctx = lookup_task_ctx(p)))
 		tctx->refresh_layer = true;
 }
+#endif
 
+#if 0
 void BPF_STRUCT_OPS(layered_set_cpumask, struct task_struct *p,
 		    const struct cpumask *cpumask)
 {
@@ -2202,12 +2226,15 @@ void BPF_STRUCT_OPS(layered_set_cpumask, struct task_struct *p,
 	tctx->all_cpus_allowed =
 		bpf_cpumask_subset(cast_mask(all_cpumask), cpumask);
 }
+#endif
 
+#if 0
 void BPF_STRUCT_OPS(layered_cpu_release, s32 cpu,
 		    struct scx_cpu_release_args *args)
 {
 	scx_bpf_reenqueue_local();
 }
+#endif
 
 static int init_cached_cpus(struct cached_cpus *ccpus)
 {
@@ -2216,6 +2243,7 @@ static int init_cached_cpus(struct cached_cpus *ccpus)
 	return 0;
 }
 
+#if 0
 s32 BPF_STRUCT_OPS(layered_init_task, struct task_struct *p,
 		   struct scx_init_task_args *args)
 {
@@ -2294,7 +2322,9 @@ s32 BPF_STRUCT_OPS(layered_init_task, struct task_struct *p,
 
 	return 0;
 }
+#endif
 
+#if 0
 void BPF_STRUCT_OPS(layered_exit_task, struct task_struct *p,
 		    struct scx_exit_task_args *args)
 {
@@ -2311,6 +2341,7 @@ void BPF_STRUCT_OPS(layered_exit_task, struct task_struct *p,
 	if (tctx->layer >= 0 && tctx->layer < nr_layers)
 		__sync_fetch_and_add(&layers[tctx->layer].nr_tasks, -1);
 }
+#endif
 
 static u64 dsq_first_runnable_for_ms(u64 dsq_id, u64 now)
 {
@@ -2417,6 +2448,7 @@ int dump_cost(void)
 	return 0;
 }
 
+#if 1
 void BPF_STRUCT_OPS(layered_dump, struct scx_dump_ctx *dctx)
 {
 	u64 now = bpf_ktime_get_ns();
@@ -2457,7 +2489,7 @@ void BPF_STRUCT_OPS(layered_dump, struct scx_dump_ctx *dctx)
 
 	dump_cost();
 }
-
+#endif
 
 /*
  * Timer related setup
@@ -2613,7 +2645,7 @@ struct layered_timer layered_timers[MAX_TIMERS] = {
 // TODO: separate this out to a separate compilation unit
 #include "timer.bpf.c"
 
-
+#if 0
 s32 BPF_STRUCT_OPS_SLEEPABLE(layered_init)
 {
 	struct bpf_cpumask *cpumask, *tmp_big_cpumask;
@@ -2826,27 +2858,30 @@ s32 BPF_STRUCT_OPS_SLEEPABLE(layered_init)
 
 	return 0;
 }
+#endif
 
+#if 0
 void BPF_STRUCT_OPS(layered_exit, struct scx_exit_info *ei)
 {
 	UEI_RECORD(uei, ei);
 }
+#endif
 
 SCX_OPS_DEFINE(layered,
-	       .select_cpu		= (void *)layered_select_cpu,
-	       .enqueue			= (void *)layered_enqueue,
-	       .dispatch		= (void *)layered_dispatch,
-	       .runnable		= (void *)layered_runnable,
-	       .running			= (void *)layered_running,
-	       .stopping		= (void *)layered_stopping,
-	       .quiescent		= (void *)layered_quiescent,
-	       .yield			= (void *)layered_yield,
-	       .set_weight		= (void *)layered_set_weight,
-	       .set_cpumask		= (void *)layered_set_cpumask,
-	       .cpu_release		= (void *)layered_cpu_release,
-	       .init_task		= (void *)layered_init_task,
-	       .exit_task		= (void *)layered_exit_task,
+	       /* .select_cpu		= (void *)layered_select_cpu, */
+	       /* .enqueue			= (void *)layered_enqueue, */
+	       /* .dispatch		= (void *)layered_dispatch, */
+	       /* .runnable		= (void *)layered_runnable, */
+	       /* .running			= (void *)layered_running, */
+	       /* .stopping		= (void *)layered_stopping, */
+	       /* .quiescent		= (void *)layered_quiescent, */
+	       /* .yield			= (void *)layered_yield, */
+	       /* .set_weight		= (void *)layered_set_weight, */
+	       /* .set_cpumask		= (void *)layered_set_cpumask, */
+	       /* .cpu_release		= (void *)layered_cpu_release, */
+	       /* .init_task		= (void *)layered_init_task, */
+	       /* .exit_task		= (void *)layered_exit_task, */
 	       .dump			= (void *)layered_dump,
-	       .init			= (void *)layered_init,
-	       .exit			= (void *)layered_exit,
+	       /* .init			= (void *)layered_init, */
+	       /* .exit			= (void *)layered_exit, */
 	       .name			= "layered");
