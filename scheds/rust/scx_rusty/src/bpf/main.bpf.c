@@ -68,22 +68,24 @@ UEI_DEFINE(uei);
 /*
  * Domains and cpus
  */
-const volatile u32 nr_doms = 32;	/* !0 for veristat, set during init */
-const volatile u32 nr_nodes = 32;	/* !0 for veristat, set during init */
-const volatile u32 nr_cpu_ids = 64;	/* !0 for veristat, set during init */
+const volatile u32 nr_doms = 1;       /* !0 for veristat, set during init */
+const volatile u32 nr_nodes = 1;      /* !0 for veristat, set during init */
+const volatile u32 nr_cpu_ids = 8;    /* !0 for veristat, set during init */
+
 const volatile u32 cpu_dom_id_map[MAX_CPUS];
 const volatile u32 dom_numa_id_map[MAX_DOMS];
 const volatile u64 dom_cpumasks[MAX_DOMS][MAX_CPUS / 64];
 const volatile u64 numa_cpumasks[MAX_NUMA_NODES][MAX_CPUS / 64];
 const volatile u32 load_half_life = 1000000000	/* 1s */;
 
-const volatile bool kthreads_local;
+const volatile bool kthreads_local = false;
 const volatile bool fifo_sched = false;
-const volatile bool direct_greedy_numa;
-const volatile bool mempolicy_affinity;
-const volatile u32 greedy_threshold;
-const volatile u32 greedy_threshold_x_numa;
-const volatile u32 debug;
+const volatile bool direct_greedy_numa = false;
+const volatile bool mempolicy_affinity = false;
+const volatile u32 greedy_threshold = 1;
+const volatile u32 greedy_threshold_x_numa = 0;
+const volatile u32 debug = 0;
+
 
 /* base slice duration */
 volatile u64 slice_ns;
