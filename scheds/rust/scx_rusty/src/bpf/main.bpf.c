@@ -1892,55 +1892,21 @@ static s32 initialize_cpu(s32 cpu)
 	return -ENOENT;
 }
 
+extern struct sdt_allocator lb_domain_allocator;
+
 s32 BPF_STRUCT_OPS_SLEEPABLE(rusty_init)
 {
 	s32 i, ret;
 
-	ret = scx_percpu_tmpmask_init();
+	ret = bpf_get_prandom_u32();
 	if (ret)
 		return ret;
-
-	ret = sdt_task_init(sizeof(struct task_ctx));
+	ret = bpf_get_prandom_u32();
 	if (ret)
 		return ret;
-
-	ret = lb_domain_init();
-	if (ret)
-		return ret;
-
-	ret = create_save_cpumask(&all_cpumask);
-	if (ret)
-		return ret;
-
-	ret = create_save_cpumask(&direct_greedy_cpumask);
-	if (ret)
-		return ret;
-
-	ret = create_save_cpumask(&kick_greedy_cpumask);
-	if (ret)
-		return ret;
-
-	bpf_for(i, 0, nr_nodes) {
-		ret = create_node(i);
-		if (ret)
-			return ret;
-	}
 	bpf_for(i, 0, nr_doms) {
-		ret = create_dom(i);
-		if (ret)
-			return ret;
+		sdt_alloc(&lb_domain_allocator);
 	}
-
-	/*
-	 * bpf_for(i, 0, nr_cpu_ids) {
-	 * 	if (is_offline_cpu(i))
-	 * 		continue;
-	 *
-	 * 	ret = initialize_cpu(i);
-	 * 	if (ret)
-	 * 		return ret;
-	 * }
-	 */
 
 	return 0;
 }

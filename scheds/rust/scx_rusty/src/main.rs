@@ -442,6 +442,23 @@ impl<'a> Scheduler<'a> {
         skel.maps.rodata_data.mempolicy_affinity = opts.mempolicy_affinity;
         skel.maps.rodata_data.debug = opts.verbose as u32;
 
+        info!("nr_doms={}", skel.maps.rodata_data.nr_doms);
+        info!("nr_nodes={}", skel.maps.rodata_data.nr_nodes);
+        info!("nr_cpu_ids={}", skel.maps.rodata_data.nr_cpu_ids);
+        // const volatile u32 cpu_dom_id_map[MAX_CPUS];
+        // const volatile u32 dom_numa_id_map[MAX_DOMS];
+        // const volatile u64 dom_cpumasks[MAX_DOMS][MAX_CPUS / 64];
+        // const volatile u64 numa_cpumasks[MAX_NUMA_NODES][MAX_CPUS / 64];
+        info!("load_half_life={}", skel.maps.rodata_data.load_half_life);
+
+        info!("kthreads_local={}", skel.maps.rodata_data.kthreads_local);
+        info!("fifo_sched={}", skel.maps.rodata_data.fifo_sched);
+	info!("direct_greedy_numa={}", skel.maps.rodata_data.direct_greedy_numa);
+        info!("mempolicy_affinity={}", skel.maps.rodata_data.mempolicy_affinity);
+        info!("greedy_threshold={}", skel.maps.rodata_data.greedy_threshold);
+        info!("greedy_threshold_x_numa={}", skel.maps.rodata_data.greedy_threshold_x_numa);
+        info!("debug={}", skel.maps.rodata_data.debug);
+
         // Attach.
         let mut skel = scx_ops_load!(skel, rusty, uei)?;
         let struct_ops = Some(scx_ops_attach!(skel, rusty)?);

@@ -145,48 +145,13 @@ void __arena *sdt_alloc_stack_pop(struct sdt_alloc_stack __arena *stack)
 static SDT_TASK_FN_ATTRS
 int sdt_alloc_stack(struct sdt_alloc_stack __arena *stack)
 {
-	void __arena *slab;
-
-	cast_kern(stack);
-
-	bpf_spin_lock(&sdt_lock);
-	if (stack->idx >= SDT_TASK_ALLOC_STACK_MIN)
-		return 0;
-
-	bpf_spin_unlock(&sdt_lock);
-
-	slab = bpf_arena_alloc_pages(&arena, NULL, 1, NUMA_NO_NODE, 0);
-	if (slab == NULL)
-		return -ENOMEM;
-
-	bpf_spin_lock(&sdt_lock);
-
-	/*
-	 * Edge case where so many threads tried to allocate that our
-	 * allocation does not fit into the stack.
-	 */
-	if (stack->idx >= SDT_TASK_ALLOC_STACK_MAX) {
-
-		bpf_spin_unlock(&sdt_lock);
-
-		bpf_arena_free_pages(&arena, slab, 1);
-		return -EAGAIN;
-	}
-
-	stack->stack[stack->idx] = slab;
-	stack->idx += 1;
-
-	sdt_stats.arena_pages_used += 1;
-	bpf_spin_unlock(&sdt_lock);
-
-	return -EAGAIN;
+	bpf_arena_alloc_pages(&arena, NULL, 1, NUMA_NO_NODE, 0);
+	return 0;
 }
 
 static __noinline
 int sdt_alloc_attempt(struct sdt_alloc_stack __arena *stack)
 {
-	int i;
-
 	/*
 	 * Use can_loop to help with verification. The can_loop macro was
 	 * introduced in kernel commit ba39486 and wraps around the may_goto
@@ -195,10 +160,8 @@ int sdt_alloc_attempt(struct sdt_alloc_stack __arena *stack)
 	 * terminable by the verifier by adding a hidden switch to the loop
 	 * and counting down with every iteration.
 	 */
-	for (i = zero; i < SDT_TASK_ALLOC_ATTEMPTS && can_loop; i++) {
-		if (sdt_alloc_stack(stack) == 0)
-			return 0;
-	}
+	if (sdt_alloc_stack(stack) == 0)
+		return 0;
 
 	return -ENOMEM;
 }
@@ -499,11 +462,9 @@ sdt_desc_t * sdt_find_empty(sdt_desc_t *desc,
 	sdt_desc_t *lv_desc[SDT_TASK_LEVELS];
 	sdt_desc_t * __arena *desc_children;
 	struct sdt_chunk __arena *chunk;
-	sdt_desc_t *tmp;
 	__u64 lv_pos[SDT_TASK_LEVELS];
 	__u64 u, pos, level;
 	__u64 idx = 0;
-	int ret;
 
 	for (level = zero; level < SDT_TASK_LEVELS && can_loop; level++) {
 		pos = sdt_chunk_find_empty(desc);
@@ -540,18 +501,6 @@ sdt_desc_t * sdt_find_empty(sdt_desc_t *desc,
 	}
 
 	for (u = zero; u < SDT_TASK_LEVELS && can_loop; u++) {
-		level = SDT_TASK_LEVELS - 1 - u;
-		tmp = lv_desc[level];
-
-		cast_kern(tmp);
-		ret = sdt_set_idx_state(tmp, lv_pos[level], true);
-		if (ret != 0)
-			break;
-
-		tmp->nr_free -= 1;
-		if (tmp->nr_free > 0)
-			break;
-
 	}
 
 	*idxp = idx;
@@ -579,47 +528,9 @@ __hidden
 struct sdt_data __arena *sdt_alloc(struct sdt_allocator *alloc)
 {
 	struct sdt_alloc_stack __arena *stack = prealloc_stack;
-	struct sdt_data __arena *data = NULL;
-	struct sdt_chunk __arena *chunk;
-	sdt_desc_t *desc;
-	__u64 idx, pos;
-	int ret;
+	__u64 idx;
 
-	/* On success, call returns with the lock taken. */
-	ret = sdt_alloc_attempt(stack);
-	if (ret != 0)
-		return NULL;
-
-	/* We unlock if we encounter an error in the function. */
-	desc = sdt_find_empty(alloc->root, stack, &idx);
-
-	bpf_spin_unlock(&sdt_lock);
-
-	if (unlikely(desc == NULL)) {
-		bpf_printk("%s: failed to find empty tree key", __func__);
-		return NULL;
-	}
-
-	cast_kern(desc);
-
-	chunk = desc->chunk;
-	cast_kern(chunk);
-
-	/* Populate the leaf node if necessary. */
-	pos = idx & (SDT_TASK_ENTS_PER_CHUNK - 1);
-	data = chunk->data[pos];
-	if (!data) {
-		data = sdt_alloc_from_pool_sleepable(&alloc->pool);
-		if (!data) {
-			sdt_free_idx(alloc, idx);
-			bpf_printk("%s: failed to allocate data from pool", __func__);
-			return NULL;
-		}
-	}
-
-	chunk->data[pos] = data;
-
-	sdt_alloc_finish(data, idx);
-
-	return data;
+	bpf_arena_alloc_pages(&arena, NULL, 1, NUMA_NO_NODE, 0);
+	sdt_find_empty(alloc->root, stack, &idx);
+	return NULL;
 }
