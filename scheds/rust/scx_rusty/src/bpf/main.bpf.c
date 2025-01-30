@@ -1931,14 +1931,16 @@ s32 BPF_STRUCT_OPS_SLEEPABLE(rusty_init)
 			return ret;
 	}
 
-	bpf_for(i, 0, nr_cpu_ids) {
-		if (is_offline_cpu(i))
-			continue;
-
-		ret = initialize_cpu(i);
-		if (ret)
-			return ret;
-	}
+	/*
+	 * bpf_for(i, 0, nr_cpu_ids) {
+	 * 	if (is_offline_cpu(i))
+	 * 		continue;
+	 *
+	 * 	ret = initialize_cpu(i);
+	 * 	if (ret)
+	 * 		return ret;
+	 * }
+	 */
 
 	return 0;
 }
